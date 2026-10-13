@@ -1,6 +1,8 @@
 TOTP plugin for SA:MP
 =====================
 
+See [original version](https://github.com/GamesDV/TOTP)
+
 This plugin allows you to generate one-time passwords based on time (and computing on algorithm based TOTP RFC 6238) are also used by Google in the Google Authenticator.
 
 Download
