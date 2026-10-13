@@ -26,3 +26,7 @@
 *.exe
 *.out
 *.app
+
+# CMake presets and local overrides
+/build/
+/CMakeUserPresets.json
