@@ -1,0 +1,70 @@
+{
+  "version": 6,
+  "cmakeMinimumRequired": { "major": 3, "minor": 25, "patch": 0 },
+  "configurePresets": [
+    {
+      "name": "ninja-base",
+      "hidden": true,
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/${presetName}",
+      "cacheVariables": { "CMAKE_EXPORT_COMPILE_COMMANDS": true }
+    },
+    {
+      "name": "windows-x86-base",
+      "hidden": true,
+      "inherits": "ninja-base",
+      "architecture": { "value": "x86", "strategy": "external" },
+      "toolchainFile": "${sourceDir}/cmake/windows-x86.cmake",
+      "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Windows" }
+    },
+    {
+      "name": "linux-x86-base",
+      "hidden": true,
+      "inherits": "ninja-base",
+      "toolchainFile": "${sourceDir}/cmake/linux-x86.cmake",
+      "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Linux" }
+    },
+    {
+      "name": "windows-x86-debug",
+      "displayName": "Windows x86 Debug (initialized MSVC environment)",
+      "inherits": "windows-x86-base",
+      "cacheVariables": { "CMAKE_BUILD_TYPE": "Debug" }
+    },
+    {
+      "name": "windows-x86-release",
+      "displayName": "Windows x86 Release (initialized MSVC environment)",
+      "inherits": "windows-x86-base",
+      "cacheVariables": { "CMAKE_BUILD_TYPE": "Release" }
+    },
+    {
+      "name": "linux-x86-debug",
+      "displayName": "Linux x86 Debug (GCC multilib)",
+      "inherits": "linux-x86-base",
+      "cacheVariables": { "CMAKE_BUILD_TYPE": "Debug" }
+    },
+    {
+      "name": "linux-x86-release",
+      "displayName": "Linux x86 Release (GCC multilib)",
+      "inherits": "linux-x86-base",
+      "cacheVariables": { "CMAKE_BUILD_TYPE": "Release" }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "windows-x86-debug", "configurePreset": "windows-x86-debug",
+      "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Windows" }
+    },
+    {
+      "name": "windows-x86-release", "configurePreset": "windows-x86-release",
+      "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Windows" }
+    },
+    {
+      "name": "linux-x86-debug", "configurePreset": "linux-x86-debug",
+      "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Linux" }
+    },
+    {
+      "name": "linux-x86-release", "configurePreset": "linux-x86-release",
+      "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Linux" }
+    }
+  ]
+}
