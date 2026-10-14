@@ -11,7 +11,7 @@ COMPILE_FLAGS=-c -O3 -w -DLINUX -I lib/sdk/amx/
 
 all:
 	@echo Compiling plugin..
-	$(GPP) $(COMPILE_FLAGS) *.cpp
+	$(GPP) $(COMPILE_FLAGS) *.cpp src/totp.cpp
 	@echo Compiling plugin SDK..
 	$(GPP) $(COMPILE_FLAGS) lib/sdk/*.cpp
 	$(GCC) $(COMPILE_FLAGS) lib/sdk/amx/*.c

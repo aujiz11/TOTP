@@ -22,6 +22,8 @@ configure_file(cmake/totp_build_config.h.in generated/totp_build_config.h @ONLY)
 
 add_library(TOTP SHARED
     main.cpp
+    src/totp.cpp
+    src/totp.h
     base32.cpp
     hmac.cpp
     sha1.cpp

@@ -22,12 +22,8 @@
 #endif
 
 #include "main.h"
-#include "base32.h"
-#include "hmac.h"
+#include "src/totp.h"
 
-#define BITS_PER_BASE32_CHAR      5           // Base32 expands space by 8/5
-#define VERIFICATION_CODE_MODULUS (1000*1000) // Six digits
-#define SHA1_DIGEST_LENGTH 20
 #define TIME_INTERVAL 30
 
 typedef void(*logprintf_t)(char* format, ...);
@@ -35,41 +31,10 @@ typedef void(*logprintf_t)(char* format, ...);
 logprintf_t logprintf;
 extern void *pAMXFunctions;
 
-
-int compute_code(const char *key, unsigned long tm)
+int compute_code(const char* key, unsigned long counter)
 {
-	if (key == NULL) return -1;
-	
-	int secretLen = (strlen(key) + 7) / 8 * BITS_PER_BASE32_CHAR;
-
-	if (secretLen <= 0 || secretLen > 100) return -1;
-
-	uint8_t secret[100];
-	if ((secretLen = base32_decode((const uint8_t *)key, secret, secretLen)) < 1) {
-		return -1;
-	}
-
-	uint8_t val[8];
-	for (int i = 8; i--; tm >>= 8) {
-		val[i] = tm;
-	}
-	uint8_t hash[SHA1_DIGEST_LENGTH];
-	hmac_sha1(secret, secretLen, val, 8, hash, SHA1_DIGEST_LENGTH);
-	memset(val, 0, sizeof(val));
-	int offset = hash[SHA1_DIGEST_LENGTH - 1] & 0xF;
-	unsigned int truncatedHash = 0;
-
-	for (int i = 0; i < 4; ++i) 
-	{
-		truncatedHash <<= 8;
-		truncatedHash |= hash[offset + i];
-	}
-
-	memset(hash, 0, sizeof(hash));
-	truncatedHash &= 0x7FFFFFFF;
-	truncatedHash %= VERIFICATION_CODE_MODULUS;
-
-	return truncatedHash;
+    const auto result = totp::generate_counter(key, static_cast<std::uint32_t>(counter));
+    return result.status == totp::Status::ok ? static_cast<int>(result.code) : -1;
 }
 
 cell AMX_NATIVE_CALL GoogleAuthenticatorCode(AMX* amx, cell* params)

@@ -154,6 +154,7 @@
     <ClCompile Include="hmac.cpp" />
     <ClCompile Include="lib\sdk\amxplugin.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="src\totp.cpp" />
     <ClCompile Include="sha1.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -165,6 +166,7 @@
     <ClInclude Include="lib\sdk\plugin.h" />
     <ClInclude Include="lib\sdk\plugincommon.h" />
     <ClInclude Include="main.h" />
+    <ClInclude Include="src\totp.h" />
     <ClInclude Include="sha1.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
