@@ -113,13 +113,18 @@ PLUGIN_EXPORT bool PLUGIN_CALL Load(void **ppData)
 	pAMXFunctions = ppData[PLUGIN_DATA_AMX_EXPORTS];
 	logprintf = (logprintf_t)ppData[PLUGIN_DATA_LOGPRINTF];
 
-	logprintf("TOTP plugin v%s by Games loaded.", TOTP_PLUGIN_VER);
+	logprintf("--------------------------------------------");
+	logprintf("  TOTP Plugin v%s", TOTP_PLUGIN_VER);
+	logprintf("  Author: Games");
+	logprintf("  Redeveloped by: Le Tuan Kiet (aujiz11)");
+	logprintf("  See more https://github.com/aujiz11/TOTP");
+	logprintf("--------------------------------------------");
 	return true;
 }
 
 PLUGIN_EXPORT void PLUGIN_CALL Unload()
 {
-	logprintf("TOTP plugin v%s by Games unloaded.", TOTP_PLUGIN_VER);
+	logprintf("TOTP Plugin v%s unloaded.", TOTP_PLUGIN_VER);
 }
 
 AMX_NATIVE_INFO PluginNatives[] =
