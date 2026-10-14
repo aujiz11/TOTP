@@ -17,6 +17,8 @@ if(NOT TOTP_COMPILER_TARGETS_X86)
         "runtime libraries. Initialize MSVC x86 tools or install Linux GCC multilib.")
 endif()
 
+find_package(OpenSSL 3.5.9 EXACT REQUIRED COMPONENTS Crypto)
+
 math(EXPR TOTP_BUILD_POINTER_BITS "${CMAKE_SIZEOF_VOID_P} * 8")
 configure_file(cmake/totp_build_config.h.in generated/totp_build_config.h @ONLY)
 
@@ -25,12 +27,13 @@ add_library(TOTP SHARED
     src/totp.cpp
     src/totp.h
     src/base32.cpp
-    src/hmac.cpp
-    src/sha1.cpp
+    src/crypto.cpp
+    src/crypto.h
     lib/sdk/amxplugin.cpp
     "${CMAKE_CURRENT_BINARY_DIR}/generated/totp_build_config.h"
 )
 target_compile_features(TOTP PRIVATE cxx_std_17)
+target_link_libraries(TOTP PRIVATE OpenSSL::Crypto)
 target_include_directories(TOTP PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}"
     "${CMAKE_CURRENT_SOURCE_DIR}/src"

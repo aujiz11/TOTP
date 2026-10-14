@@ -7,21 +7,34 @@
       "hidden": true,
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/build/${presetName}",
-      "cacheVariables": { "CMAKE_EXPORT_COMPILE_COMMANDS": true }
+      "cacheVariables": {
+        "CMAKE_EXPORT_COMPILE_COMMANDS": true,
+        "VCPKG_INSTALLED_DIR": "${sourceDir}/build/vcpkg_installed",
+        "VCPKG_MANIFEST_MODE": true
+      },
+      "environment": { "VCPKG_DISABLE_METRICS": "1" }
     },
     {
       "name": "windows-x86-base",
       "hidden": true,
       "inherits": "ninja-base",
       "architecture": { "value": "x86", "strategy": "external" },
-      "toolchainFile": "${sourceDir}/cmake/windows-x86.cmake",
+      "toolchainFile": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
+      "cacheVariables": {
+        "VCPKG_CHAINLOAD_TOOLCHAIN_FILE": "${sourceDir}/cmake/windows-x86.cmake",
+        "VCPKG_TARGET_TRIPLET": "x86-windows"
+      },
       "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Windows" }
     },
     {
       "name": "linux-x86-base",
       "hidden": true,
       "inherits": "ninja-base",
-      "toolchainFile": "${sourceDir}/cmake/linux-x86.cmake",
+      "toolchainFile": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
+      "cacheVariables": {
+        "VCPKG_CHAINLOAD_TOOLCHAIN_FILE": "${sourceDir}/cmake/linux-x86.cmake",
+        "VCPKG_TARGET_TRIPLET": "x86-linux-shared"
+      },
       "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Linux" }
     },
     {

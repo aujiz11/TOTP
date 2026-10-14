@@ -20,7 +20,8 @@
 namespace totp {
     enum class Status : std::uint8_t {
         ok,
-        invalid_secret
+        invalid_secret,
+        crypto_error
     };
 
     struct Result {

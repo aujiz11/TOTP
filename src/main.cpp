@@ -20,6 +20,7 @@
 #include "main.h"
 #include "totp.h"
 #include "base32.h"
+#include "crypto.h"
 
 #define TIME_INTERVAL 30
 
@@ -37,11 +38,7 @@ int compute_code(const char* key, unsigned long counter)
 namespace {
 	struct SecretBuffer {
 		char text[base32::max_encoded_bytes + 1]{};
-		~SecretBuffer()
-		{
-			volatile char* bytes = text;
-			for (std::size_t i = 0; i < sizeof(text); ++i) bytes[i] = 0;
-		}
+		crypto::ScopedCleanse cleanup{text, sizeof(text)};
 	};
 
 	bool read_secret(AMX* amx, cell address, SecretBuffer& secret)
