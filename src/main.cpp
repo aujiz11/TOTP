@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "lib/sdk/amx/amx.h"
-#include "lib/sdk/plugincommon.h"
+#include "../lib/sdk/amx/amx.h"
+#include "../lib/sdk/plugincommon.h"
 
 #if defined(_WIN32)
 	#include <iostream>
@@ -22,7 +22,7 @@
 #endif
 
 #include "main.h"
-#include "src/totp.h"
+#include "totp.h"
 
 #define TIME_INTERVAL 30
 

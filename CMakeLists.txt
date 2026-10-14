@@ -21,17 +21,20 @@ math(EXPR TOTP_BUILD_POINTER_BITS "${CMAKE_SIZEOF_VOID_P} * 8")
 configure_file(cmake/totp_build_config.h.in generated/totp_build_config.h @ONLY)
 
 add_library(TOTP SHARED
-    main.cpp
+    src/main.cpp
     src/totp.cpp
     src/totp.h
-    base32.cpp
-    hmac.cpp
-    sha1.cpp
+    src/base32.cpp
+    src/hmac.cpp
+    src/sha1.cpp
     lib/sdk/amxplugin.cpp
     "${CMAKE_CURRENT_BINARY_DIR}/generated/totp_build_config.h"
 )
 target_compile_features(TOTP PRIVATE cxx_std_17)
-target_include_directories(TOTP PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
+target_include_directories(TOTP PRIVATE
+    "${CMAKE_CURRENT_SOURCE_DIR}"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src"
+)
 target_compile_definitions(TOTP PRIVATE PAWN_CELL_SIZE=32)
 set_target_properties(TOTP PROPERTIES
     CXX_EXTENSIONS OFF
@@ -44,7 +47,7 @@ if(WIN32)
     target_sources(TOTP PRIVATE TOTP.def)
     if(MSVC)
         target_compile_options(TOTP PRIVATE /W4 /permissive-)
-        set_source_files_properties(main.cpp PROPERTIES COMPILE_OPTIONS /Zc:strictStrings-)
+        set_source_files_properties(src/main.cpp PROPERTIES COMPILE_OPTIONS /Zc:strictStrings-)
         set_target_properties(TOTP PROPERTIES
             MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL"
         )

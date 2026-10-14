@@ -13,8 +13,8 @@
 // limitations under the License.
 
 #include "totp.h"
-#include "../base32.h"
-#include "../hmac.h"
+#include "base32.h"
+#include "hmac.h"
 
 #include <cstring>
 
