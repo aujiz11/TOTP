@@ -18,7 +18,6 @@
 
 #include <cstring>
 
-#define BITS_PER_BASE32_CHAR      5
 #define VERIFICATION_CODE_MODULUS (1000*1000)
 #define SHA1_DIGEST_LENGTH 20
 
@@ -28,14 +27,10 @@ namespace totp {
 	{
 		if (key == nullptr) return {Status::invalid_secret, 0};
 
-		int secretLen = (std::strlen(key) + 7) / 8 * BITS_PER_BASE32_CHAR;
-
-		if (secretLen <= 0 || secretLen > 100) return {Status::invalid_secret, 0};
-
-		uint8_t secret[100];
-		if ((secretLen = base32_decode((const uint8_t *)key, secret, secretLen)) < 1) {
-			return {Status::invalid_secret, 0};
-		}
+        uint8_t secret[base32::max_decoded_bytes]{};
+        const int secretLen = base32_decode(reinterpret_cast<const uint8_t*>(key),
+                                          secret, static_cast<int>(sizeof(secret)));
+        if (secretLen < 1) return {Status::invalid_secret, 0};
 
 		uint8_t val[8];
 		for (int i = 8; i--; tm >>= 8) {

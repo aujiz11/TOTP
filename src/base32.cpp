@@ -15,82 +15,121 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//#include <string.h>
-#include <string.h>
-
 #include "base32.h"
 
-int base32_decode(const uint8_t *encoded, uint8_t *result, int bufSize) {
-  int buffer = 0;
-  int bitsLeft = 0;
-  int count = 0;
-  for (const uint8_t *ptr = encoded; count < bufSize && *ptr; ++ptr) {
-    uint8_t ch = *ptr;
-    if (ch == ' ' || ch == '\t' || ch == '\r' || ch == '\n' || ch == '-') {
-      continue;
+namespace {
+    void erase(uint8_t* output, std::size_t count)
+    {
+        volatile uint8_t* bytes = output;
+        while (count--) *bytes++ = 0;
     }
-    buffer <<= 5;
-
-    // Deal with commonly mistyped characters
-    if (ch == '0') {
-      ch = 'O';
-    } else if (ch == '1') {
-      ch = 'L';
-    } else if (ch == '8') {
-      ch = 'B';
-    }
-
-    // Look up one base32 digit
-    if ((ch >= 'A' && ch <= 'Z') || (ch >= 'a' && ch <= 'z')) {
-      ch = (ch & 0x1F) - 1;
-    } else if (ch >= '2' && ch <= '7') {
-      ch -= '2' - 26;
-    } else {
-      return -1;
-    }
-
-    buffer |= ch;
-    bitsLeft += 5;
-    if (bitsLeft >= 8) {
-      result[count++] = buffer >> (bitsLeft - 8);
-      bitsLeft -= 8;
-    }
-  }
-  if (count < bufSize) {
-    result[count] = '\000';
-  }
-  return count;
 }
 
-int base32_encode(const uint8_t *data, int length, uint8_t *result,
-                  int bufSize) {
-  if (length < 0 || length > (1 << 28)) {
-    return -1;
-  }
-  int count = 0;
-  if (length > 0) {
-    int buffer = data[0];
-    int next = 1;
-    int bitsLeft = 8;
-    while (count < bufSize && (bitsLeft > 0 || next < length)) {
-      if (bitsLeft < 5) {
-        if (next < length) {
-          buffer <<= 8;
-          buffer |= data[next++] & 0xFF;
-          bitsLeft += 8;
-        } else {
-          int pad = 5 - bitsLeft;
-          buffer <<= pad;
-          bitsLeft += pad;
+namespace base32 {
+    DecodeResult decode(const uint8_t* input, std::size_t length, uint8_t* output, std::size_t capacity, Mode mode)
+    {
+        std::size_t written = 0;
+        const auto fail = [&](Status status) {
+            erase(output, written);
+            return DecodeResult{status, 0};
+        };
+        if (!input || !output || capacity == 0 || length == 0 ||
+            length > max_encoded_bytes || (mode != Mode::strict && mode != Mode::legacy)) {
+            return fail(Status::invalid_input);
         }
-      }
-      int index = 0x1F & (buffer >> (bitsLeft - 5));
-      bitsLeft -= 5;
-      result[count++] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567"[index];
+
+        uint32_t buffer = 0;
+        unsigned bits = 0;
+        std::size_t symbols = 0;
+        std::size_t padding = 0;
+        bool too_small = false;
+
+        for (std::size_t i = 0; i < length; ++i) {
+            uint8_t ch = input[i];
+            if (mode == Mode::legacy) {
+                if (ch == ' ' || ch == '\t' || ch == '\r' || ch == '\n' || ch == '-') continue;
+                if (ch >= 'a' && ch <= 'z') ch -= 'a' - 'A';
+                if (ch == '0') ch = 'O';
+                else if (ch == '1') ch = 'L';
+                else if (ch == '8') ch = 'B';
+            }
+            if (mode == Mode::strict && ch == '=') {
+                ++padding;
+                continue;
+            }
+            if (padding != 0) return fail(Status::invalid_input);
+            unsigned value;
+            if (ch >= 'A' && ch <= 'Z') value = ch - 'A';
+            else if (ch >= '2' && ch <= '7') value = ch - '2' + 26;
+            else return fail(Status::invalid_input);
+            ++symbols;
+            buffer = (buffer << 5) | value;
+            bits += 5;
+            if (bits >= 8) {
+                bits -= 8;
+                if (written < capacity && written < max_decoded_bytes) {
+                    output[written++] = static_cast<uint8_t>(buffer >> bits);
+                } else {
+                    too_small = true;
+                }
+            }
+            buffer &= (uint32_t{1} << bits) - 1;
+        }
+        const auto remainder = symbols % 8;
+        if (symbols == 0 || remainder == 1 || remainder == 3 || remainder == 6 || buffer != 0) {
+            return fail(Status::invalid_input);
+        }
+        if (padding != 0) {
+            const std::size_t needed = remainder == 2 ? 6 : remainder == 4 ? 4 :
+                                    remainder == 5 ? 3 : remainder == 7 ? 1 : 0;
+            if (needed == 0 || padding != needed || length % 8 != 0) {
+                return fail(Status::invalid_input);
+            }
+        }
+        if (too_small) return fail(Status::output_too_small);
+        return {Status::ok, written};
     }
-  }
-  if (count < bufSize) {
-    result[count] = '\000';
-  }
-  return count;
+} // namespace base32
+
+int base32_decode(const uint8_t* encoded, uint8_t* result, int bufSize)
+{
+    if (!encoded || !result || bufSize <= 0) return -1;
+    std::size_t length = 0;
+
+    while (length <= base32::max_encoded_bytes && encoded[length] != 0) {
+        ++length;
+    }
+
+    const auto decoded = base32::decode(encoded, length, result, static_cast<std::size_t>(bufSize), base32::Mode::legacy);
+    if (decoded.status != base32::Status::ok) return -1;
+    if (decoded.length < static_cast<std::size_t>(bufSize)) result[decoded.length] = 0;
+    return static_cast<int>(decoded.length);
+}
+
+int base32_encode(const uint8_t* data, int length, uint8_t* result, int bufSize)
+{
+    if (length < 0 || length > static_cast<int>(base32::max_decoded_bytes) ||
+        bufSize < 0 || (!data && length != 0) || (!result && bufSize != 0)) return -1;
+
+    const int required = (length * 8 + 4) / 5;
+
+    if (bufSize < required) return -1;
+
+    uint32_t buffer = 0;
+    unsigned bits = 0;
+    int count = 0;
+    constexpr char alphabet[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+    for (int i = 0; i < length; ++i) {
+        buffer = (buffer << 8) | data[i];
+        bits += 8;
+        while (bits >= 5) {
+            bits -= 5;
+            result[count++] = alphabet[(buffer >> bits) & 31];
+        }
+        buffer &= (uint32_t{1} << bits) - 1;
+    }
+
+    if (bits != 0) result[count++] = alphabet[(buffer << (5 - bits)) & 31];
+    if (count < bufSize) result[count] = 0;
+    return count;
 }

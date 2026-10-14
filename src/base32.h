@@ -15,23 +15,29 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //
-// Encode and decode from base32 encoding using the following alphabet:
-//   ABCDEFGHIJKLMNOPQRSTUVWXYZ234567
-// This alphabet is documented in RFC 4668/3548
-//
-// We allow white-space and hyphens, but all other characters are considered
-// invalid.
-//
-// All functions return the number of output bytes or -1 on error. If the
-// output buffer is too small, the result will silently be truncated.
+// RFC 4648 Base32. Legacy normalization is retained by base32_decode.
+// No silent truncation. Failed decoding clears written bytes and reports zero length.
+// Input/output spans must be valid, separate allocations, overlap is unsupported.
 
-#ifndef _BASE32_H_
-#define _BASE32_H_
+#ifndef TOTP_BASE32_H
+#define TOTP_BASE32_H
 
+#include <cstddef>
 #include <stdint.h>
 
-int base32_decode(const uint8_t *encoded, uint8_t *result, int bufSize);
-int base32_encode(const uint8_t *data, int length, uint8_t *result,
-                  int bufSize);
+namespace base32 {
+    constexpr std::size_t max_encoded_bytes = 160;
+    constexpr std::size_t max_decoded_bytes = 100;
 
-#endif /* _BASE32_H_ */
+    enum class Mode { strict, legacy };
+    enum class Status { ok, invalid_input, output_too_small };
+    struct DecodeResult { Status status; std::size_t length; };
+
+    DecodeResult decode(const uint8_t* input, std::size_t length, uint8_t* output,
+                        std::size_t capacity, Mode mode);
+}
+
+int base32_decode(const uint8_t* encoded, uint8_t* result, int bufSize);
+int base32_encode(const uint8_t* data, int length, uint8_t* result, int bufSize);
+
+#endif
