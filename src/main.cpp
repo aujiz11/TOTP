@@ -15,14 +15,11 @@
 #include "../lib/sdk/amx/amx.h"
 #include "../lib/sdk/plugincommon.h"
 
-#if defined(_WIN32)
-	#include <iostream>
-#else
-#include <string.h>
-#endif
+#include <cstdint>
 
 #include "main.h"
 #include "totp.h"
+#include "base32.h"
 
 #define TIME_INTERVAL 30
 
@@ -37,18 +34,72 @@ int compute_code(const char* key, unsigned long counter)
     return result.status == totp::Status::ok ? static_cast<int>(result.code) : -1;
 }
 
+namespace {
+	struct SecretBuffer {
+		char text[base32::max_encoded_bytes + 1]{};
+		~SecretBuffer()
+		{
+			volatile char* bytes = text;
+			for (std::size_t i = 0; i < sizeof(text); ++i) bytes[i] = 0;
+		}
+	};
+
+	bool read_secret(AMX* amx, cell address, SecretBuffer& secret)
+	{
+		if (!amx || (!amx->data && !amx->base) || !pAMXFunctions ||
+			!static_cast<void**>(pAMXFunctions)[PLUGIN_AMX_EXPORT_GetAddr] ||
+			address < 0 || address % sizeof(cell) != 0 ||
+			amx->hea < 0 || amx->stk < amx->hea || amx->stp < amx->stk ||
+			amx->stp <= 0 || amx->hea % sizeof(cell) != 0 ||
+			amx->stk % sizeof(cell) != 0 || amx->stp % sizeof(cell) != 0) return false;
+		
+		// Read only within the starting live heap/data or stack region, never the gap.
+		const cell end = address < amx->hea ? amx->hea : address >= amx->stk ? amx->stp : 0;
+		if (end <= address) return false;
+
+		bool packed = false;
+		std::size_t length = 0;
+
+		for (std::uint64_t offset = static_cast<ucell>(address); offset + sizeof(cell) <= static_cast<ucell>(end); offset += sizeof(cell)) 
+		{
+			cell* physical = nullptr;
+			if (amx_GetAddr(amx, static_cast<cell>(offset), &physical) != AMX_ERR_NONE || !physical ||
+				reinterpret_cast<std::uintptr_t>(physical) % alignof(cell) != 0) return false;
+			
+			if (amx->data && reinterpret_cast<std::uintptr_t>(physical) !=
+				reinterpret_cast<std::uintptr_t>(amx->data) + offset) return false;
+			
+			const ucell value = static_cast<ucell>(*physical);
+			if (offset == static_cast<ucell>(address)) {
+				packed = value > static_cast<ucell>(UNPACKEDMAX);
+			}
+
+			const unsigned characters = packed ? sizeof(cell) : 1;
+			for (unsigned i = 0; i < characters; ++i) {
+				const ucell character = packed ? (value >> (8 * (sizeof(cell) - 1 - i))) & 0xff : value;
+				if (character == 0) return true;
+				if (character > 0xff || length == base32::max_encoded_bytes) return false;
+				
+				secret.text[length++] = static_cast<char>(character);
+			}
+		}
+		return false;
+	}
+} // namespace
+
 cell AMX_NATIVE_CALL GoogleAuthenticatorCode(AMX* amx, cell* params)
 {
-	if (params[0] != 8)
-	{
-		logprintf("GoogleAuthenticatorCode: Incorrect number of arguments (%d). Expecting 2 parameters.", params[0] / sizeof(cell));
-		return -1;
-	}
-
-	char *string;
-	amx_StrParam(amx, params[1], string);
-
-	return compute_code(string, static_cast<int>(params[2]) / TIME_INTERVAL);
+    if (!params) return -1;
+    if (params[0] != 8) {
+        if (logprintf) {
+            logprintf("GoogleAuthenticatorCode: Incorrect number of arguments (%d). Expecting 2 parameters.",
+                      params[0] / static_cast<cell>(sizeof(cell)));
+        }
+        return -1;
+    }
+    SecretBuffer secret;
+    if (!read_secret(amx, params[1], secret)) return -1;
+    return compute_code(secret.text, static_cast<int>(params[2]) / TIME_INTERVAL);
 }
 
 
