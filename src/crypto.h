@@ -38,6 +38,10 @@ namespace crypto {
     };
 
     using Sha1Digest = std::array<std::uint8_t, 20>;
+    using SecretBytes = std::array<std::uint8_t, 20>;
+
+    bool random_secret(SecretBytes& output);
+    bool constant_time_equal(const void* left, const void* right, std::size_t length) noexcept;
     
     bool hmac_sha1(const std::uint8_t* key, std::size_t key_length,
                 const std::uint8_t* data, std::size_t data_length,

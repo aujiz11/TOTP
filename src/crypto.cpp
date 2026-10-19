@@ -20,9 +20,32 @@
 #include <openssl/evp.h>
 #include <openssl/params.h>
 #include <openssl/provider.h>
+#include <openssl/rand.h>
 #include <memory>
 
 namespace crypto {
+    bool constant_time_equal(const void* left, const void* right, std::size_t length) noexcept
+    {
+        return left && right && CRYPTO_memcmp(left, right, length) == 0;
+    }
+
+    bool random_secret(SecretBytes& output)
+    {
+        secure_erase(output.data(), output.size());
+        ScopedCleanse failed_output(output.data(), output.size());
+        if (OpenSSL_version_num() != OPENSSL_VERSION_NUMBER) return false;
+        
+        std::unique_ptr<OSSL_LIB_CTX, decltype(&OSSL_LIB_CTX_free)> library(OSSL_LIB_CTX_new(), OSSL_LIB_CTX_free);
+        if (!library) return false;
+        
+        std::unique_ptr<OSSL_PROVIDER, decltype(&OSSL_PROVIDER_unload)> provider(OSSL_PROVIDER_load(library.get(), "default"), OSSL_PROVIDER_unload);
+        if (!provider || EVP_set_default_properties(library.get(), "provider=default") != 1 ||
+            RAND_priv_bytes_ex(library.get(), output.data(), output.size(), 256) != 1) return false;
+        
+        failed_output.release();
+        return true;
+    }
+
     void secure_erase(void* memory, std::size_t length) noexcept
     {
         if (memory && length != 0) OPENSSL_cleanse(memory, length);
