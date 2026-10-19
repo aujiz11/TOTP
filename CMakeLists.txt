@@ -22,13 +22,12 @@ find_package(OpenSSL 3.5.9 EXACT REQUIRED COMPONENTS Crypto)
 math(EXPR TOTP_BUILD_POINTER_BITS "${CMAKE_SIZEOF_VOID_P} * 8")
 configure_file(cmake/totp_build_config.h.in generated/totp_build_config.h @ONLY)
 
+file(GLOB_RECURSE TOTP_SOURCES CONFIGURE_DEPENDS
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/*"
+)
+
 add_library(TOTP SHARED
-    src/main.cpp
-    src/totp.cpp
-    src/totp.h
-    src/base32.cpp
-    src/crypto.cpp
-    src/crypto.h
+    ${TOTP_SOURCES}
     lib/sdk/amxplugin.cpp
     "${CMAKE_CURRENT_BINARY_DIR}/generated/totp_build_config.h"
 )
@@ -58,7 +57,7 @@ if(WIN32)
         target_compile_options(TOTP PRIVATE -Wall -Wextra -Wpedantic)
     endif()
 else()
-    target_compile_definitions(TOTP PRIVATE LINUX)
+    target_compile_definitions(TOTP PRIVATE LINUX _TIME_BITS=64 _FILE_OFFSET_BITS=64)
     target_compile_options(TOTP PRIVATE -Wall -Wextra -Wpedantic)
     target_link_options(TOTP PRIVATE -Wl,--no-undefined)
     set_target_properties(TOTP PROPERTIES
