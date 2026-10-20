@@ -2,7 +2,10 @@ name: Build development packages
 
 on:
   push:
+    branches: ['**']
+    paths-ignore: ['docs/**', 'tests/**', '**.md']
   pull_request:
+    paths-ignore: ['docs/**', 'tests/**', '**.md']
   workflow_dispatch:
 
 permissions:
@@ -14,7 +17,7 @@ concurrency:
 
 env:
   VCPKG_DISABLE_METRICS: '1'
-  VCPKG_BINARY_SOURCES: clear
+  VCPKG_BINARY_SOURCES: 'clear;files,${{ github.workspace }}/build/vcpkg-binary-cache,readwrite'
 
 jobs:
   windows:
@@ -35,6 +38,14 @@ jobs:
           path: build/vcpkg
           persist-credentials: false
 
+      - name: Cache Windows x86 Release dependencies
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: build/vcpkg-binary-cache
+          key: vcpkg-${{ runner.os }}-x86-release-${{ hashFiles('vcpkg.json', 'vcpkg-configuration.json', 'cmake/vcpkg-ports/**', 'cmake/triplets/**') }}-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: |
+            vcpkg-${{ runner.os }}-x86-release-${{ hashFiles('vcpkg.json', 'vcpkg-configuration.json', 'cmake/vcpkg-ports/**', 'cmake/triplets/**') }}-
+
       - name: Build and package Windows
         shell: pwsh
         run: |
@@ -46,9 +57,10 @@ jobs:
           $env:VCPKG_ROOT = Join-Path $env:GITHUB_WORKSPACE 'build/vcpkg'
           $logDir = 'build/windows-x86-release'
           New-Item -ItemType Directory -Force $logDir | Out-Null
+          New-Item -ItemType Directory -Force build/vcpkg-binary-cache | Out-Null
           & "$env:VCPKG_ROOT/bootstrap-vcpkg.bat" -disableMetrics 2>&1 | Tee-Object "$logDir/ci-bootstrap.log"
           if ($LASTEXITCODE -ne 0) { throw 'vcpkg bootstrap failed' }
-          cmake --preset windows-x86-release 2>&1 | Tee-Object "$logDir/ci-configure.log"
+          cmake --preset windows-x86-release -DVCPKG_TARGET_TRIPLET=x86-windows-release "-DVCPKG_INSTALLED_DIR=$env:GITHUB_WORKSPACE/build/vcpkg_installed_ci" 2>&1 | Tee-Object "$logDir/ci-configure.log"
           if ($LASTEXITCODE -ne 0) { throw 'Configure failed' }
           cmake --build --preset windows-x86-release --parallel 2 2>&1 | Tee-Object "$logDir/ci-build.log"
           if ($LASTEXITCODE -ne 0) { throw 'Build failed' }
@@ -76,7 +88,7 @@ jobs:
             build/windows-x86-release/ci-*.log
             build/windows-x86-release/CMakeFiles/CMakeConfigureLog.yaml
             build/packages/TOTP-windows-x86.zip.sha256
-            build/package-stage/windows-x86/BUILD-INFO.json
+            build/package-stage/windows-x86-metadata/
             build/vcpkg/buildtrees/openssl/*.log
           if-no-files-found: warn
           retention-days: 14
@@ -99,6 +111,14 @@ jobs:
           path: build/vcpkg
           persist-credentials: false
 
+      - name: Cache Linux x86 Release dependencies
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: build/vcpkg-binary-cache
+          key: vcpkg-${{ runner.os }}-x86-release-${{ hashFiles('vcpkg.json', 'vcpkg-configuration.json', 'cmake/vcpkg-ports/**', 'cmake/triplets/**') }}-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: |
+            vcpkg-${{ runner.os }}-x86-release-${{ hashFiles('vcpkg.json', 'vcpkg-configuration.json', 'cmake/vcpkg-ports/**', 'cmake/triplets/**') }}-
+
       - name: Install Linux x86 build prerequisites
         shell: bash
         run: |
@@ -106,7 +126,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install --no-install-recommends -y \
             g++-multilib libc6-dev-i386 linux-libc-dev binutils ninja-build \
-            pkg-config perl make nasm autoconf automake libtool curl zip unzip tar
+            pkg-config perl make nasm autoconf automake libtool curl tar
           printf 'int main() { return sizeof(void*) != 4; }\n' > build/x86-probe.cpp
           g++ -m32 build/x86-probe.cpp -o build/x86-probe
           build/x86-probe
@@ -117,9 +137,10 @@ jobs:
           set -euo pipefail
           export VCPKG_ROOT="$GITHUB_WORKSPACE/build/vcpkg"
           log_dir=build/linux-x86-release
-          mkdir -p "$log_dir"
+          mkdir -p "$log_dir" build/vcpkg-binary-cache
           "$VCPKG_ROOT/bootstrap-vcpkg.sh" -disableMetrics 2>&1 | tee "$log_dir/ci-bootstrap.log"
-          cmake --preset linux-x86-release 2>&1 | tee "$log_dir/ci-configure.log"
+          cmake --preset linux-x86-release -DVCPKG_TARGET_TRIPLET=x86-linux-shared-release \
+            -DVCPKG_INSTALLED_DIR="$GITHUB_WORKSPACE/build/vcpkg_installed_ci" 2>&1 | tee "$log_dir/ci-configure.log"
           cmake --build --preset linux-x86-release --parallel 2 2>&1 | tee "$log_dir/ci-build.log"
           cmake -DTOTP_BUILD_DIR="$log_dir" -DTOTP_REVISION="$GITHUB_SHA" \
             -P cmake/Package.cmake 2>&1 | tee "$log_dir/ci-package.log"
@@ -142,7 +163,7 @@ jobs:
             build/linux-x86-release/ci-*.log
             build/linux-x86-release/CMakeFiles/CMakeConfigureLog.yaml
             build/packages/TOTP-linux-x86.zip.sha256
-            build/package-stage/linux-x86/BUILD-INFO.json
+            build/package-stage/linux-x86-metadata/
             build/vcpkg/buildtrees/openssl/*.log
           if-no-files-found: warn
           retention-days: 14

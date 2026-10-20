@@ -10,13 +10,11 @@ This ZIP does not replace your server configuration. Merge the following setting
 ## Windows
 
 - Requires Windows 10/Server 2016 or newer and a compatible x86 server.
-- plugins/TOTP.dll, libcrypto-3.dll and required x86 VC runtime DLLs are included.
+- plugins/TOTP.dll and libcrypto-3.dll are included.
 - SA-MP server.cfg: append TOTP to the existing plugins line.
 - open.mp config.json: add "TOTP" to the pawn.legacy_plugins array.
-- Keep bundled CRT DLLs in the server root. Windows supplies the UCRT/API sets.
-- For centrally serviced CRT updates, Microsoft also provides an x86 VC Redistributable.
+- Install the x86 Microsoft Visual C++ Redistributable for the compiler toolset.
+  CRT DLLs are not included in the plugin ZIP. Windows supplies the UCRT/API sets.
 
-Microsoft runtime files are from the compiler's x86 CRT redistributable directory.
-Microsoft Visual C++ Runtime: Copyright Microsoft Corporation. All rights reserved.
-Redistribution terms: https://learn.microsoft.com/cpp/windows/redistributing-visual-cpp-files
+Installation: https://learn.microsoft.com/cpp/windows/latest-supported-vc-redist
 

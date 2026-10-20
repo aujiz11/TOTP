@@ -98,8 +98,8 @@ function(package_windows_runtime plugin output)
                     message(FATAL_ERROR "Missing x86 redistributable CRT: ${source}")
                 endif()
                 package_check_architecture("${source}")
-                file(COPY_FILE "${source}" "${TOTP_STAGE_DIR}/${name}")
-                list(APPEND queue "${TOTP_STAGE_DIR}/${name}")
+                # Validate the external x86 CRT; servers install the VC Redistributable.
+                list(APPEND queue "${source}")
             elseif(lower MATCHES "^(api-ms-win-|ext-ms-win-)")
                 # API sets and the UCRT are supplied by supported Windows versions.
                 continue()
