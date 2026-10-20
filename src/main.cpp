@@ -21,6 +21,7 @@
 #include "totp.h"
 #include "base32.h"
 #include "crypto.h"
+#include "pawn_natives.h"
 
 #define TIME_INTERVAL 30
 
@@ -113,7 +114,7 @@ PLUGIN_EXPORT bool PLUGIN_CALL Load(void **ppData)
 	logprintf("--------------------------------------------");
 	logprintf("  TOTP Plugin v%s", TOTP_PLUGIN_VER);
 	logprintf("  Author: Games");
-	logprintf("  Redeveloped by: Le Tuan Kiet (aujiz11)");
+	logprintf("  Modified by: Le Tuan Kiet (aujiz11)");
 	logprintf("  See more https://github.com/aujiz11/TOTP");
 	logprintf("--------------------------------------------");
 	return true;
@@ -127,6 +128,10 @@ PLUGIN_EXPORT void PLUGIN_CALL Unload()
 AMX_NATIVE_INFO PluginNatives[] =
 {
 	{ "GoogleAuthenticatorCode", GoogleAuthenticatorCode },
+    { "TOTP_GenerateCode", TOTP_GenerateCode },
+    { "TOTP_VerifyCode", TOTP_VerifyCode },
+    { "TOTP_GenerateSecret", TOTP_GenerateSecret },
+    { "TOTP_GetVersion", TOTP_GetVersion },
 	{ 0, 0 }
 };
 

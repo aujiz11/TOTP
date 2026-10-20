@@ -21,43 +21,68 @@
 
 namespace totp {
 	
-	Result generate_counter(const char* key, std::uint64_t tm)
-	{
-		if (key == nullptr) return {Status::invalid_secret, 0};
-
-        crypto::Sha1Digest hash{};
-        crypto::ScopedCleanse erase_hash(hash.data(), hash.size());
+    namespace {
+        Result generate(const char* key, std::size_t length, base32::Mode mode, std::uint64_t tm)
         {
-            uint8_t secret[base32::max_decoded_bytes]{};
-            crypto::ScopedCleanse erase_secret(secret, sizeof(secret));
-            const int secretLen = base32_decode(reinterpret_cast<const uint8_t*>(key),
-                                              secret, static_cast<int>(sizeof(secret)));
-            if (secretLen < 1) return {Status::invalid_secret, 0};
+            if (key == nullptr) return {Status::invalid_secret, 0};
 
-            uint8_t counter[8]{};
-            crypto::ScopedCleanse erase_counter(counter, sizeof(counter));
-            for (unsigned i = 0; i < sizeof(counter); ++i) {
-                counter[sizeof(counter) - 1 - i] = static_cast<uint8_t>(tm >> (i * 8));
+            crypto::Sha1Digest hash{};
+            crypto::ScopedCleanse erase_hash(hash.data(), hash.size());
+            {
+                uint8_t secret[base32::max_decoded_bytes]{};
+                crypto::ScopedCleanse erase_secret(secret, sizeof(secret));
+                const auto decoded = base32::decode(reinterpret_cast<const uint8_t*>(key), length, secret, sizeof(secret), mode);
+                if (decoded.status != base32::Status::ok || decoded.length == 0) 
+                {
+                    return {Status::invalid_secret, 0};
+                }
+
+                uint8_t counter[8]{};
+                crypto::ScopedCleanse erase_counter(counter, sizeof(counter));
+                for (unsigned i = 0; i < sizeof(counter); ++i) 
+                {
+                    counter[sizeof(counter) - 1 - i] = static_cast<uint8_t>(tm >> (i * 8));
+                }
+
+                if (!crypto::hmac_sha1(secret, decoded.length, counter, sizeof(counter), hash)) 
+                {
+                    return {Status::crypto_error, 0};
+                }
             }
-            if (!crypto::hmac_sha1(secret, static_cast<std::size_t>(secretLen), counter, sizeof(counter), hash)) {
-                return {Status::crypto_error, 0};
+
+            int offset = hash[SHA1_DIGEST_LENGTH - 1] & 0xF;
+            std::uint32_t truncatedHash = 0;
+
+            for (int i = 0; i < 4; ++i)
+            {
+                truncatedHash <<= 8;
+                truncatedHash |= hash[offset + i];
             }
+
+            truncatedHash &= 0x7FFFFFFF;
+            truncatedHash %= VERIFICATION_CODE_MODULUS;
+
+            return {Status::ok, truncatedHash};
+        }
+    } // namespace
+
+    Result generate_counter(const char* key, std::uint64_t counter)
+    {
+        if (!key) return {Status::invalid_secret, 0};
+
+        std::size_t length = 0;
+        while (length <= base32::max_encoded_bytes && key[length] != 0) 
+        {
+            ++length;
         }
 
-		int offset = hash[SHA1_DIGEST_LENGTH - 1] & 0xF;
-		std::uint32_t truncatedHash = 0;
+        return generate(key, length, base32::Mode::legacy, counter);
+    }
 
-		for (int i = 0; i < 4; ++i)
-		{
-			truncatedHash <<= 8;
-			truncatedHash |= hash[offset + i];
-		}
-
-		truncatedHash &= 0x7FFFFFFF;
-		truncatedHash %= VERIFICATION_CODE_MODULUS;
-
-		return {Status::ok, truncatedHash};
-	}
+    Result generate_counter_strict(const char* key, std::size_t length, std::uint64_t counter)
+    {
+        return generate(key, length, base32::Mode::strict, counter);
+    }
 
 	Result generate_at(const char* key, std::uint64_t timestamp)
 	{

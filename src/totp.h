@@ -16,6 +16,7 @@
 #define TOTP_CORE_H
 
 #include <cstdint>
+#include <cstddef>
 
 namespace totp {
     enum class Status : std::uint8_t {
@@ -33,6 +34,7 @@ namespace totp {
     Result generate_counter(const char* key, std::uint64_t counter);
     Result generate_at(const char* key, std::uint64_t timestamp);
     Result generate_at_unix(const char* key, std::int64_t timestamp);
+    Result generate_counter_strict(const char* key, std::size_t length, std::uint64_t counter);
 } // namespace totp
 
 #endif
