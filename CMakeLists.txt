@@ -63,5 +63,12 @@ else()
     set_target_properties(TOTP PROPERTIES
         CXX_VISIBILITY_PRESET hidden
         VISIBILITY_INLINES_HIDDEN YES
+        INSTALL_RPATH "$ORIGIN/.."
+        INSTALL_RPATH_USE_LINK_PATH FALSE
     )
 endif()
+
+install(TARGETS TOTP RUNTIME DESTINATION plugins LIBRARY DESTINATION plugins)
+install(FILES include/totp.inc DESTINATION qawno/include)
+install(FILES include/totp.inc DESTINATION pawno/include)
+install(FILES LICENSE README.md DESTINATION .)

@@ -1,0 +1,148 @@
+name: Build development packages
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: packages-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  VCPKG_DISABLE_METRICS: '1'
+  VCPKG_BINARY_SOURCES: clear
+
+jobs:
+  windows:
+    name: windows-x86-release
+    runs-on: windows-2022
+    timeout-minutes: 90
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          persist-credentials: false
+
+      - name: Checkout pinned vcpkg
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          repository: microsoft/vcpkg
+          ref: 44ccfd88b3eca6929d6d16398c7b19945c29a5f6
+          path: build/vcpkg
+          persist-credentials: false
+
+      - name: Build and package Windows
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $vswhere = "${env:ProgramFiles(x86)}/Microsoft Visual Studio/Installer/vswhere.exe"
+          $vsRoot = & $vswhere -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+          if ($LASTEXITCODE -ne 0 -or !$vsRoot) { throw 'MSVC x86 tools unavailable' }
+          & "$vsRoot/Common7/Tools/Launch-VsDevShell.ps1" -Arch x86 -HostArch amd64 -SkipAutomaticLocation -NoLogo
+          $env:VCPKG_ROOT = Join-Path $env:GITHUB_WORKSPACE 'build/vcpkg'
+          $logDir = 'build/windows-x86-release'
+          New-Item -ItemType Directory -Force $logDir | Out-Null
+          & "$env:VCPKG_ROOT/bootstrap-vcpkg.bat" -disableMetrics 2>&1 | Tee-Object "$logDir/ci-bootstrap.log"
+          if ($LASTEXITCODE -ne 0) { throw 'vcpkg bootstrap failed' }
+          cmake --preset windows-x86-release 2>&1 | Tee-Object "$logDir/ci-configure.log"
+          if ($LASTEXITCODE -ne 0) { throw 'Configure failed' }
+          cmake --build --preset windows-x86-release --parallel 2 2>&1 | Tee-Object "$logDir/ci-build.log"
+          if ($LASTEXITCODE -ne 0) { throw 'Build failed' }
+          $crtRoot = Join-Path $env:VCToolsRedistDir 'x86'
+          $crt = Get-ChildItem -LiteralPath $crtRoot -Directory -Filter 'Microsoft.VC*.CRT' | Sort-Object Name -Descending | Select-Object -First 1
+          if (!$crt) { throw 'x86 redistributable CRT directory unavailable' }
+          cmake "-DTOTP_BUILD_DIR=$logDir" "-DTOTP_MSVC_RUNTIME_DIR=$($crt.FullName)" "-DTOTP_REVISION=$env:GITHUB_SHA" -P cmake/Package.cmake 2>&1 | Tee-Object "$logDir/ci-package.log"
+          if ($LASTEXITCODE -ne 0) { throw 'Windows package validation failed' }
+
+      - name: Upload Windows ZIP without an outer wrapper ZIP
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: TOTP-windows-x86.zip
+          path: build/packages/TOTP-windows-x86.zip
+          archive: false
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload Windows logs and checksum
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: logs-windows-x86
+          path: |
+            build/windows-x86-release/ci-*.log
+            build/windows-x86-release/CMakeFiles/CMakeConfigureLog.yaml
+            build/packages/TOTP-windows-x86.zip.sha256
+            build/package-stage/windows-x86/BUILD-INFO.json
+            build/vcpkg/buildtrees/openssl/*.log
+          if-no-files-found: warn
+          retention-days: 14
+
+  linux:
+    name: linux-x86-release
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          persist-credentials: false
+
+      - name: Checkout pinned vcpkg
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          repository: microsoft/vcpkg
+          ref: 44ccfd88b3eca6929d6d16398c7b19945c29a5f6
+          path: build/vcpkg
+          persist-credentials: false
+
+      - name: Install Linux x86 build prerequisites
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y \
+            g++-multilib libc6-dev-i386 linux-libc-dev binutils ninja-build \
+            pkg-config perl make nasm autoconf automake libtool curl zip unzip tar
+          printf 'int main() { return sizeof(void*) != 4; }\n' > build/x86-probe.cpp
+          g++ -m32 build/x86-probe.cpp -o build/x86-probe
+          build/x86-probe
+
+      - name: Build and package Linux
+        shell: bash
+        run: |
+          set -euo pipefail
+          export VCPKG_ROOT="$GITHUB_WORKSPACE/build/vcpkg"
+          log_dir=build/linux-x86-release
+          mkdir -p "$log_dir"
+          "$VCPKG_ROOT/bootstrap-vcpkg.sh" -disableMetrics 2>&1 | tee "$log_dir/ci-bootstrap.log"
+          cmake --preset linux-x86-release 2>&1 | tee "$log_dir/ci-configure.log"
+          cmake --build --preset linux-x86-release --parallel 2 2>&1 | tee "$log_dir/ci-build.log"
+          cmake -DTOTP_BUILD_DIR="$log_dir" -DTOTP_REVISION="$GITHUB_SHA" \
+            -P cmake/Package.cmake 2>&1 | tee "$log_dir/ci-package.log"
+
+      - name: Upload Linux ZIP without an outer wrapper ZIP
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: TOTP-linux-x86.zip
+          path: build/packages/TOTP-linux-x86.zip
+          archive: false
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload Linux logs and checksum
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: logs-linux-x86
+          path: |
+            build/linux-x86-release/ci-*.log
+            build/linux-x86-release/CMakeFiles/CMakeConfigureLog.yaml
+            build/packages/TOTP-linux-x86.zip.sha256
+            build/package-stage/linux-x86/BUILD-INFO.json
+            build/vcpkg/buildtrees/openssl/*.log
+          if-no-files-found: warn
+          retention-days: 14
