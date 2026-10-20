@@ -124,7 +124,11 @@ else()
 endif()
 
 file(MAKE_DIRECTORY "${SOURCE_PATH}/vcpkg")
-file(COPY "${CMAKE_CURRENT_LIST_DIR}/configure" DESTINATION "${SOURCE_PATH}/vcpkg")
+# The overlay can be checked out with mode 0644 (e.g. after adding it on Windows).
+# vcpkg_configure_make executes this wrapper directly, so set its mode explicitly.
+file(COPY "${CMAKE_CURRENT_LIST_DIR}/configure" DESTINATION "${SOURCE_PATH}/vcpkg"
+    FILE_PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE
+                     GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE)
 vcpkg_configure_make(
     SOURCE_PATH "${SOURCE_PATH}"
     PROJECT_SUBPATH "vcpkg"

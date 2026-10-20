@@ -42,7 +42,7 @@ jobs:
           $vswhere = "${env:ProgramFiles(x86)}/Microsoft Visual Studio/Installer/vswhere.exe"
           $vsRoot = & $vswhere -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
           if ($LASTEXITCODE -ne 0 -or !$vsRoot) { throw 'MSVC x86 tools unavailable' }
-          & "$vsRoot/Common7/Tools/Launch-VsDevShell.ps1" -Arch x86 -HostArch amd64 -SkipAutomaticLocation -NoLogo
+          & "$vsRoot/Common7/Tools/Launch-VsDevShell.ps1" -Arch x86 -HostArch amd64 -SkipAutomaticLocation
           $env:VCPKG_ROOT = Join-Path $env:GITHUB_WORKSPACE 'build/vcpkg'
           $logDir = 'build/windows-x86-release'
           New-Item -ItemType Directory -Force $logDir | Out-Null
