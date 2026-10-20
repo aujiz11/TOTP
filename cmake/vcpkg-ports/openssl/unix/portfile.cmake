@@ -145,7 +145,8 @@ vcpkg_configure_make(
 )
 vcpkg_install_make(
     ${MAKEFILE_OPTIONS}
-    BUILD_TARGET build_inst_sw
+    # OpenSSL 3.5 builds software with build_sw, then installs via install.
+    BUILD_TARGET build_sw
 )
 vcpkg_fixup_pkgconfig()
 
