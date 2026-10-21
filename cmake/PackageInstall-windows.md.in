@@ -2,17 +2,20 @@
 
 This archive is an unreleased Actions build, not a production GitHub Release.
 All binaries target x86 (32-bit). Extract with paths intact into the server root.
-The plugin is a SA-MP/open.mp legacy plugin, not a native open.mp component.
-Do not load multiple copies. Keep libcrypto beside the server executable.
+SA-MP uses the legacy plugin; open.mp uses the native runtime component.
+Both directories contain identical copies of the same hybrid TOTP.dll binary;
+the entry point called by the host selects its runtime automatically.
+Load one TOTP runtime per server. Keep libcrypto beside the server executable.
 Include files are provided for both pawno and qawno; use the one for your editor.
 This ZIP does not replace your server configuration. Merge the following settings.
 
 ## Windows
 
 - Requires Windows 10/Server 2016 or newer and a compatible x86 server.
-- plugins/TOTP.dll and libcrypto-3.dll are included.
+- plugins/TOTP.dll, components/TOTP.dll and libcrypto-3.dll are included.
 - SA-MP server.cfg: append TOTP to the existing plugins line.
-- open.mp config.json: add "TOTP" to the pawn.legacy_plugins array.
+- open.mp: components/TOTP.dll loads automatically; keep its Pawn component enabled.
+  Remove TOTP from pawn.legacy_plugins and any legacy plugins setting.
 - Install the x86 Microsoft Visual C++ Redistributable for the compiler toolset.
   CRT DLLs are not included in the plugin ZIP. Windows supplies the UCRT/API sets.
 

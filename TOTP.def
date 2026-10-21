@@ -3,4 +3,5 @@ EXPORTS
     Load
     Unload
     AmxLoad
-    AmxUnload  
+    AmxUnload
+    ComponentEntryPoint

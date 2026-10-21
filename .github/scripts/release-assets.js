@@ -17,6 +17,7 @@ function verifyZip(filename, platform) {
   const expected = [
     'pawno/include/totp.inc', 'qawno/include/totp.inc',
     `plugins/TOTP.${platform === 'windows' ? 'dll' : 'so'}`,
+    `components/TOTP.${platform === 'windows' ? 'dll' : 'so'}`,
     platform === 'windows' ? 'libcrypto-3.dll' : 'libcrypto.so.3'
   ].sort();
   if (JSON.stringify(files) !== JSON.stringify(expected)) {

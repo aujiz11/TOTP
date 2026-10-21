@@ -2,20 +2,23 @@
 
 This archive is an unreleased Actions build, not a production GitHub Release.
 All binaries target x86 (32-bit). Extract with paths intact into the server root.
-The plugin is a SA-MP/open.mp legacy plugin, not a native open.mp component.
-Do not load multiple copies. Keep libcrypto beside the server executable.
+SA-MP uses the legacy plugin; open.mp uses the native runtime component.
+Both directories contain identical copies of the same hybrid TOTP.so binary;
+the entry point called by the host selects its runtime automatically.
+Load one TOTP runtime per server. Keep libcrypto beside the server executable.
 Include files are provided for both pawno and qawno; use the one for your editor.
 This ZIP does not replace your server configuration. Merge the following settings.
 
 ## Linux
 
-- plugins/TOTP.so and the x86 libcrypto.so.3 are included.
-- Highest GLIBC symbol version required by the plugin/bundled crypto: @glibc@.
+- plugins/TOTP.so, components/TOTP.so and the x86 libcrypto.so.3 are included.
+- Highest GLIBC symbol version required by the runtimes/bundled crypto: @glibc@.
 - The host needs a compatible 32-bit glibc, ELF loader, libstdc++ and libgcc.
   On Debian/Ubuntu, enable i386 packages and install libc6:i386, libstdc++6:i386,
   libgcc-s1:i386 as needed. These OS runtimes are not replaced by this ZIP.
 - SA-MP server.cfg: append TOTP.so to the existing plugins line.
-- open.mp config.json: add "TOTP.so" to the pawn.legacy_plugins array.
+- open.mp: components/TOTP.so loads automatically; keep its Pawn component enabled.
+  Remove TOTP from pawn.legacy_plugins and any legacy plugins setting.
 - TOTP.so uses $ORIGIN/.. to find libcrypto.so.3 in the extracted server root.
 - Use the library matching the archive's OS and x86 architecture. No global
   loader-path setup is needed when this directory structure is retained.
