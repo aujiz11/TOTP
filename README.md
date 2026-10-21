@@ -20,13 +20,8 @@ the account service's responsibility.
 Installation
 ------------
 
-The same binary exports the legacy plugin entry points and open.mp's
-`ComponentEntryPoint`. The entry point called by the server selects the runtime;
-there is no separate component build or runtime flag to configure.
-
 Extract the ZIP into your server root, preserving paths. Keep `libcrypto-3.dll`
-(Windows) or `libcrypto.so.3` (Linux) beside the server executable. Windows
-also needs the installed x86 Microsoft Visual C++ Redistributable.
+(Windows) or `libcrypto.so.3` (Linux) beside the server executable.
 
 ### SA:MP
 
@@ -36,8 +31,7 @@ Use `plugins/TOTP.dll` on Windows or `plugins/TOTP.so` on Linux. Append `TOTP`
 ### open.mp
 
 Use the same binary as `components/TOTP.dll` on Windows or `components/TOTP.so`
-on Linux. Keep the Pawn component enabled. Remove TOTP from `pawn.legacy_plugins`
-and any legacy `plugins` setting. Load one TOTP copy per server.
+on Linux.
 
 Include `totp.inc` from your `pawno/include/` or `qawno/include/`.
 Existing Pawn scripts use the same native signatures on both servers.
