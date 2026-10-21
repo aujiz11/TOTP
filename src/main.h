@@ -15,6 +15,6 @@
 #ifndef MAIN_H
 #define MAIN_H
 
-#define TOTP_PLUGIN_VER "1.0.0"
+#define TOTP_PLUGIN_VER "2.0.0"
 
 #endif
